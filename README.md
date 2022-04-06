@@ -1,5 +1,5 @@
 # Tensorflow Extra
-> Extra Utilities of Tensorflow
+> Extra Utilities for Tensorflow
 
 # Activations
 ## SmeLU: Smooth ReLU
