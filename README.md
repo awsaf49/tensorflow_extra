@@ -1,6 +1,11 @@
 # Tensorflow Extra
 > Extra Utilities for Tensorflow
 
+# Installation
+```shell
+pip install tensorflow-extra
+```
+
 # Activations
 ## SmeLU: Smooth ReLU
 ```py
