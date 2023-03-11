@@ -80,6 +80,8 @@ class MelSpectrogram(tf.keras.layers.Layer):
 
     def dbscale(self, input):
         log_spec = 10.0 * (tf.math.log(input) / tf.math.log(10.0))
+        ref_value = tf.math.reduce_max(input)
+        log_spec -= 10.0 * tf.math.log(ref_value) / tf.math.log(10.0)
         log_spec = tf.math.maximum(log_spec, tf.math.reduce_max(log_spec) - self.top_db)
         return log_spec
     
