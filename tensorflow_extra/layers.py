@@ -108,3 +108,155 @@ class MelSpectrogram(tf.keras.layers.Layer):
             'out_channels': self.out_channels,
         })
         return config
+    
+    
+@tf.keras.utils.register_keras_serializable(package='tensorflow_extra')
+class MixUp(tf.keras.layers.Layer):
+    """
+    MixUp Augmentation Layer to apply MixUp to one batch.
+    
+    Args:
+        alpha (float): Alpha parameter for beta distribution.
+        prob (float): Probability of applying MixUp.
+        
+    Call Args:
+        images (tf.Tensor): Batch of images.
+        labels (tf.Tensor): Batch of labels.
+        
+    Returns:
+        tf.Tensor: Batch of image.
+        tf.Tensor: Batch of labels.
+        
+    """
+    def __init__(self, alpha=0.2, prob=0.5, name='mix_up', **kwargs):
+        super(MixUp, self).__init__(name=name, **kwargs)
+        self.alpha = alpha
+        self.prob = prob
+
+    def call(self, images, labels, training=False):
+
+        # Skip batch if not training or if prob is not met
+        if random_float() > self.prob or not training:
+            return images, labels
+
+        # Get original shape
+        spec_shape = tf.shape(images)
+        label_shape = tf.shape(labels)
+
+        # Select lambda from beta distribution
+        beta = tfp.distributions.Beta(self.alpha, self.alpha)
+        lam = beta.sample(1)[0]
+
+        # It's faster to roll the batch by one instead of shuffling it to create image pairs
+        images = lam * images + (1 - lam) * tf.roll(images, shift=1, axis=0)
+        labels = lam * labels + (1 - lam) * tf.roll(labels, shift=1, axis=0)
+        
+        # Ensure original shape
+        images = tf.reshape(images, spec_shape)
+        labels = tf.reshape(labels, label_shape)
+        
+        return images, labels
+
+    def get_config(self):
+        config = super(MixUp, self).get_config()
+        config.update({
+            'alpha': self.alpha,
+            'prob': self.prob,
+        })
+        return config
+    
+    
+@tf.keras.utils.register_keras_serializable(package='tensorflow_extra')
+class CutMix(tf.keras.layers.Layer):
+    """
+    Augmentation layer to apply CutMix to one batch.
+    
+    Args:
+        alpha (float): Alpha parameter for beta distribution.
+        prob (float): Probability of applying CutMix.
+        full_height (bool): If True, the patch will be cut with full height of the image.
+        full_width (bool): If True, the patch will be cut with full width of the image.
+        
+    Call Args:
+        images (tf.Tensor): Batch of images.
+        labels (tf.Tensor): Batch of labels.
+        
+    Returns:
+        tf.Tensor: Batch of image.
+        tf.Tensor: Batch of labels.
+    """
+    def __init__(self, alpha=0.2, prob=0.5, full_height=False, full_width=False, name='cut_mix', **kwargs):
+          super(CutMix, self).__init__(name=name, **kwargs)
+          self.alpha = alpha
+          self.prob = prob
+          self.full_height = full_height
+          self.full_width = full_width
+          
+    def call(self, images, labels, training=False):
+        
+        # Skip batch if not training or if prob is not met
+        if random_float() > self.prob or not training:
+            return images, labels
+
+        # Get original shapes
+        image_shape = tf.shape(images)
+        label_shape = tf.shape(labels)
+
+        # Select lambda from beta distribution
+        beta = tfp.distributions.Beta(self.alpha, self.alpha)
+        lam = beta.sample(1)[0]
+
+        # It's faster to roll the batch by one instead of shuffling it to create image pairs
+        images_rolled = tf.roll(images, shift=1, axis=0)
+        labels_rolled = tf.roll(labels, shift=1, axis=0)
+
+        # Find dimensions of patch
+        H = tf.cast(image_shape[1], tf.int32)
+        W = tf.cast(image_shape[2], tf.int32)
+        r_x = random_int([], minval=0, maxval=W) if not self.full_width else 0
+        r_y = random_int([], minval=0, maxval=H) if not self.full_height else 0
+        r = 0.5 * tf.math.sqrt(1.0 - lam)
+        r_w_p = r if not self.full_width else 1.0 
+        r_h_p = r if not self.full_height else 1.0
+        r_w_half = tf.cast(r_w_p * tf.cast(W, tf.float32), tf.int32)
+        r_h_half = tf.cast(r_h_p * tf.cast(H, tf.float32), tf.int32)
+
+        # Find the coordinates of the patch
+        x1 = tf.cast(tf.clip_by_value(r_x - r_w_half, 0, W), tf.int32)
+        x2 = tf.cast(tf.clip_by_value(r_x + r_w_half, 0, W), tf.int32)
+        y1 = tf.cast(tf.clip_by_value(r_y - r_h_half, 0, H), tf.int32)
+        y2 = tf.cast(tf.clip_by_value(r_y + r_h_half, 0, H), tf.int32)
+
+        # Extract outer-pad patch -> [0, 0, 1, 1, 0, 0]
+        patch1 = images[:, y1:y2, x1:x2, :]  # [batch, height, width, channel]
+        patch1 = tf.pad(patch1, 
+                        [[0, 0], [y1, H - y2], [x1, W - x2], [0, 0]])  # outer-pad
+
+        # Extract inner-pad patch -> [2, 2, 0, 0, 2, 2]
+        patch2 = images_rolled[:, y1:y2, x1:x2, :]
+        patch2 = tf.pad(patch2, 
+                        [[0, 0], [y1, H - y2], [x1, W - x2], [0, 0]])  # outer-pad
+        patch2 = images_rolled - patch2  # inner-pad = img - outer-pad
+
+        # Combine patches [0, 0, 1, 1, 0, 0] + [2, 2, 0, 0, 2, 2] -> [2, 2, 1, 1, 2, 2]
+        images = patch1 + patch2
+
+        # Combine labels
+        lam = tf.cast((1.0 - (x2 - x1) * (y2 - y1) / (W * H)), tf.float32)
+        labels = lam * labels + (1.0 - lam) * labels_rolled
+
+        # Ensure original shape
+        images = tf.reshape(images, image_shape)
+        labels = tf.reshape(labels, label_shape)
+        
+        return images, labels
+    
+    def get_config(self):
+        config = super(CutMix, self).get_config()
+        config.update({
+            'alpha': self.alpha,
+            'prob': self.prob,
+            'full_height': self.full_height,
+            'full_width': self.full_width,
+        })
+        return config
