@@ -135,11 +135,11 @@ class MixUp(tf.keras.layers.Layer):
         self.alpha = alpha
         self.prob = prob
 
-    def call(self, images, labels, training=False):
+    def call(self, images, labels=None, training=False):
 
-        # Skip batch if not training or if prob is not met
-        if random_float() > self.prob or not training:
-            return images, labels
+        # Skip batch if not training or if prob is not met or if labels are not provided
+        if random_float() > self.prob or not training or labels is None:
+            return (images, labels) if labels is not None else images
 
         # Get original shape
         spec_shape = tf.shape(images)
@@ -194,11 +194,11 @@ class CutMix(tf.keras.layers.Layer):
           self.full_height = full_height
           self.full_width = full_width
           
-    def call(self, images, labels, training=False):
+    def call(self, images, labels=None, training=False):
         
-        # Skip batch if not training or if prob is not met
-        if random_float() > self.prob or not training:
-            return images, labels
+        # Skip batch if not training or if prob is not met or if labels are not provided
+        if random_float() > self.prob or not training or labels is None:
+            return (images, labels) if labels is not None else images
 
         # Get original shapes
         image_shape = tf.shape(images)
