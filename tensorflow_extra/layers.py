@@ -49,7 +49,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
         ref=1.0,
         out_channels=None,
         name="mel_spectrogram",
-        **kwargs
+        **kwargs,
     ):
         super(MelSpectrogram, self).__init__(name=name, **kwargs)
         self.n_fft = n_fft
@@ -240,7 +240,7 @@ class CutMix(tf.keras.layers.Layer):
         full_height=False,
         full_width=False,
         name="cut_mix",
-        **kwargs
+        **kwargs,
     ):
         super(CutMix, self).__init__(name=name, **kwargs)
         self.alpha = alpha
@@ -317,6 +317,128 @@ class CutMix(tf.keras.layers.Layer):
                 "prob": self.prob,
                 "full_height": self.full_height,
                 "full_width": self.full_width,
+            }
+        )
+        return config
+
+
+@tf.keras.utils.register_keras_serializable(package="tensorflow_extra")
+class TimeFreqMask(tf.keras.layers.Layer):
+    """
+    Applies Time Freq Mask to spectrogram input
+    Ref: https://pytorch.org/audio/main/_modules/torchaudio/functional/functional.html#mask_along_axis_iid
+    """
+
+    def __init__(
+        self,
+        freq_mask_prob=0.5,
+        num_freq_masks=2,
+        freq_mask_param=10,
+        time_mask_prob=0.5,
+        num_time_masks=2,
+        time_mask_param=20,
+        time_last=True,
+        name="time_freq_mask",
+        **kwargs,
+    ):
+        super(TimeFreqMask, self).__init__(name=name, **kwargs)
+        self.freq_mask_prob = freq_mask_prob
+        self.num_freq_masks = num_freq_masks
+        self.freq_mask_param = freq_mask_param
+        self.time_mask_prob = time_mask_prob
+        self.num_time_masks = num_time_masks
+        self.time_mask_param = time_mask_param
+        self.time_last = time_last
+
+    def call(self, inputs, training=False):
+        if not training:
+            return inputs
+        x = inputs
+        # Adjust input shape
+        ndims = tf.rank(x)
+        if ndims == 3:
+            x = x[tf.newaxis, ...]
+        elif ndims == 2:
+            x = x[tf.newaxis, ..., tf.newaxis]
+        elif ndims != 4:
+            raise ValueError("Input tensor must be 2, 3, or 4-dimensional.")
+        # Apply time mask
+        for _ in tf.range(self.num_freq_masks):
+            x = self.mask_along_axis_iid(
+                x, self.time_mask_param, 0, 2 + int(self.time_last), self.time_mask_prob
+            )
+        # Apply freq mask
+        for _ in tf.range(self.num_time_masks):
+            x = self.mask_along_axis_iid(
+                x,
+                self.freq_mask_param,
+                0,
+                2 + int(not self.time_last),
+                self.freq_mask_prob,
+            )
+        # Re-adjust output shape
+        if ndims == 3:
+            x = x[0]
+        elif ndims == 2:
+            x = x[0, ..., 0]
+        return x
+
+    def mask_along_axis_iid(self, specs, mask_param, mask_value, axis, p):
+        if axis not in [2, 3]:
+            raise ValueError("Only Frequency and Time masking are supported")
+
+        if not 0.0 <= p <= 1.0:
+            raise ValueError(f"The value of p must be between 0.0 and 1.0 ({p} given).")
+
+        mask_param = self._get_mask_param(mask_param, p, specs.shape[axis])
+        if mask_param < 1:
+            return specs
+
+        specs = tf.transpose(specs, perm=[0, 3, 1, 2])  # (batch, channel, freq, time)
+
+        dtype = specs.dtype
+
+        value = tf.random.uniform(shape=specs.shape[:2], dtype=dtype) * mask_param
+        min_value = tf.random.uniform(shape=specs.shape[:2], dtype=dtype) * (
+            specs.shape[axis] - value
+        )
+
+        # Create broadcastable mask
+        mask_start = tf.cast(min_value, tf.float32)[..., None, None]
+        mask_end = (tf.cast(min_value, tf.float32) + tf.cast(value, tf.float32))[
+            ..., None, None
+        ]
+        mask = tf.range(0, specs.shape[axis], dtype=dtype)
+
+        # Per batch example masking
+        specs = tf.linalg.matrix_transpose(specs) if axis == 2 else specs
+        cond = (mask >= mask_start) & (mask < mask_end)
+        specs = tf.where(
+            cond, tf.fill(tf.shape(specs), tf.cast(mask_value, dtype=dtype)), specs
+        )
+        specs = tf.linalg.matrix_transpose(specs) if axis == 2 else specs
+
+        specs = tf.transpose(specs, perm=[0, 2, 3, 1])  # (batch, freq, time, channel)
+
+        return specs
+
+    def _get_mask_param(self, mask_param, p, axis_length):
+        if p == 1.0:
+            return mask_param
+        else:
+            return min(mask_param, int(axis_length * p))
+
+    def get_config(self):
+        config = super(TimeFreqMask, self).get_config()
+        config.update(
+            {
+                "freq_mask_prob": self.freq_mask_prob,
+                "num_freq_masks": self.num_freq_masks,
+                "freq_mask_param": self.freq_mask_param,
+                "time_mask_prob": self.time_mask_prob,
+                "num_time_masks": self.num_time_masks,
+                "time_mask_param": self.time_mask_param,
+                "time_last": self.time_last,
             }
         )
         return config
