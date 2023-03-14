@@ -12,4 +12,6 @@ def smelu(x, beta=1.5):
         tensorflow tensor
     """
     x = tf.convert_to_tensor(x)
-    return tf.where(tf.math.abs(x)<=beta, ((x+beta)**2)/(4*beta), tf.nn.relu(x))
+    return tf.where(
+        tf.math.abs(x) <= beta, ((x + beta) ** 2) / (4 * beta), tf.nn.relu(x)
+    )
