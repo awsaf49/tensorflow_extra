@@ -54,12 +54,12 @@ class MelSpectrogram(tf.keras.layers.Layer):
         super(MelSpectrogram, self).__init__(name=name, **kwargs)
         self.n_fft = n_fft
         self.hop_length = hop_length
-        self.win_length = win_length
+        self.win_length = win_length or n_fft
         self.window = window
         self.sr = sr
         self.n_mels = n_mels
         self.fmin = fmin
-        self.fmax = fmax or sr / 2
+        self.fmax = fmax or int(sr / 2)
         self.power_to_db = power_to_db
         self.top_db = top_db
         self.power = power
@@ -82,7 +82,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
     def spectrogram(self, input):
         spec = tf.signal.stft(
             input,
-            frame_length=self.win_length or self.n_fft,
+            frame_length=self.win_length,
             frame_step=self.hop_length,
             fft_length=self.n_fft,
             window_fn=getattr(tf.signal, self.window),
