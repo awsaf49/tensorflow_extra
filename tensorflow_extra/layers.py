@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_extra.utils import random_int, random_float
 
+
 @tf.keras.utils.register_keras_serializable(package='tensorflow_extra')
 class MelSpectrogram(tf.keras.layers.Layer):
     """
@@ -32,7 +33,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
     """
     def __init__(self, n_fft=2048, hop_length=512, win_length=None, window='hann_window', 
                  sr=16000, n_mels=128, fmin=20.0, fmax=None, power_to_db=True, top_db=80.0, 
-                 power=2.0, out_channels=None, name='mel_spectrogram', **kwargs):
+                 power=2.0, amin=1e-10, ref=1.0, out_channels=None, name='mel_spectrogram', **kwargs):
         super(MelSpectrogram, self).__init__(name=name, **kwargs)
         self.n_fft = n_fft
         self.hop_length = hop_length
@@ -45,6 +46,8 @@ class MelSpectrogram(tf.keras.layers.Layer):
         self.power_to_db = power_to_db
         self.top_db = top_db
         self.power = power
+        self.amin = amin
+        self.ref = ref
         self.out_channels = out_channels
 
     def call(self, input):
@@ -79,9 +82,12 @@ class MelSpectrogram(tf.keras.layers.Layer):
         return tf.tensordot(input, matrix, axes=1)
 
     def dbscale(self, input):
-        log_spec = 10.0 * (tf.math.log(input) / tf.math.log(10.0))
-        ref_value = tf.math.reduce_max(input)
-        log_spec -= 10.0 * tf.math.log(ref_value) / tf.math.log(10.0)
+        log_spec = 10.0 * (tf.math.log(tf.math.maximum(input, self.amin)) / tf.math.log(10.0))
+        if callable(self.ref):
+            ref_value = self.ref(log_spec)
+        else:
+            ref_value = tf.math.abs(self.ref)
+        log_spec -= 10.0 * tf.math.log(tf.math.maximum(ref_value, self.amin)) / tf.math.log(10.0)
         log_spec = tf.math.maximum(log_spec, tf.math.reduce_max(log_spec) - self.top_db)
         return log_spec
     
@@ -107,6 +113,8 @@ class MelSpectrogram(tf.keras.layers.Layer):
             'power_to_db': self.power_to_db,
             'top_db': self.top_db,
             'power': self.power,
+            'amin': self.amin,
+            'ref': self.ref,
             'out_channels': self.out_channels,
         })
         return config
