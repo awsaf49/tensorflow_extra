@@ -123,7 +123,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
         if self.out_channels > 1:
             multiples = tf.concat(
                 [
-                    tf.ones(tf.rank(spec), dtype=tf.int32),
+                    tf.ones(tf.rank(spec)-1, dtype=tf.int32),
                     tf.constant([self.out_channels], dtype=tf.int32),
                 ],
                 axis=0,
