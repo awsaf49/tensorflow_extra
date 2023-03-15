@@ -425,12 +425,6 @@ class TimeFreqMask(tf.keras.layers.Layer):
 
         return specs
 
-    def _get_mask_param(self, mask_param, p, axis_length):
-        if p == 1.0:
-            return mask_param
-        else:
-            return min(mask_param, int(axis_length * p))
-
     def get_config(self):
         config = super(TimeFreqMask, self).get_config()
         config.update(
