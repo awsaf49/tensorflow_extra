@@ -394,8 +394,7 @@ class TimeFreqMask(tf.keras.layers.Layer):
         if not 0.0 <= p <= 1.0:
             raise ValueError(f"The value of p must be between 0.0 and 1.0 ({p} given).")
 
-        mask_param = self._get_mask_param(mask_param, p, specs.shape[axis])
-        if mask_param < 1:
+        if tf.random.uniform([]) > p:
             return specs
 
         specs = tf.transpose(specs, perm=[0, 3, 1, 2])  # (batch, channel, freq, time)
