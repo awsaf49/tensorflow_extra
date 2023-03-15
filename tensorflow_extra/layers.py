@@ -123,7 +123,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
         if self.out_channels > 1:
             multiples = tf.concat(
                 [
-                    tf.ones(tf.rank(spec)-1, dtype=tf.int32),
+                    tf.ones(tf.rank(spec) - 1, dtype=tf.int32),
                     tf.constant([self.out_channels], dtype=tf.int32),
                 ],
                 axis=0,
@@ -365,7 +365,11 @@ class TimeFreqMask(tf.keras.layers.Layer):
         # Apply time mask
         for _ in tf.range(self.num_freq_masks):
             x = self.mask_along_axis_iid(
-                x, self.time_mask_param, 0, 2 + int(self.time_last), self.time_mask_prob
+                x,
+                self.time_mask_param,
+                0,
+                2 + int(not self.time_last),
+                self.time_mask_prob,
             )
         # Apply freq mask
         for _ in tf.range(self.num_time_masks):
@@ -373,7 +377,7 @@ class TimeFreqMask(tf.keras.layers.Layer):
                 x,
                 self.freq_mask_param,
                 0,
-                2 + int(not self.time_last),
+                2 + int(self.time_last),
                 self.freq_mask_prob,
             )
         # Re-adjust output shape
