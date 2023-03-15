@@ -67,6 +67,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
         self.ref = ref
         self.out_channels = out_channels
 
+    @tf.function
     def call(self, input):
         spec = self.spectrogram(input)  # audio to spectrogram with shape
         spec = self.melscale(spec)  # spectrogram to mel spectrogram
@@ -178,6 +179,7 @@ class MixUp(tf.keras.layers.Layer):
         self.alpha = alpha
         self.prob = prob
 
+    @tf.function
     def call(self, images, labels=None, training=False):
 
         # Skip batch if not training or if prob is not met or if labels are not provided
@@ -248,6 +250,7 @@ class CutMix(tf.keras.layers.Layer):
         self.full_height = full_height
         self.full_width = full_width
 
+    @tf.function
     def call(self, images, labels=None, training=False):
 
         # Skip batch if not training or if prob is not met or if labels are not provided
