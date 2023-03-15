@@ -350,18 +350,25 @@ class TimeFreqMask(tf.keras.layers.Layer):
         self.time_mask_param = time_mask_param
         self.time_last = time_last
 
+    @tf.function
     def call(self, inputs, training=False):
         if not training:
             return inputs
         x = inputs
         # Adjust input shape
         ndims = tf.rank(x)
-        if ndims == 3:
-            x = x[tf.newaxis, ...]
-        elif ndims == 2:
-            x = x[tf.newaxis, ..., tf.newaxis]
-        elif ndims != 4:
-            raise ValueError("Input tensor must be 2, 3, or 4-dimensional.")
+        shape = tf.shape(x)
+        
+#         if ndims == 3:
+#             x = x[tf.newaxis, ...]
+#             x = tf.reshape(x, shape=(1, tf.split(shape, 3)))
+#         elif ndims == 2:
+#             x = x[tf.newaxis, ..., tf.newaxis]
+#             x = tf.reshape(x, shape=(1, tf.split(shape, 2), 1))
+#         else:
+#             pass
+#         elif ndims > 4 or ndims < 2:
+#             raise ValueError("Input tensor must be 2, 3, or 4-dimensional.")
         # Apply time mask
         for _ in tf.range(self.num_time_masks):
             x = self.mask_along_axis_iid(
@@ -381,12 +388,12 @@ class TimeFreqMask(tf.keras.layers.Layer):
                 self.freq_mask_prob,
             )
         # Re-adjust output shape
-        if ndims == 3:
-            x = x[0]
-        elif ndims == 2:
-            x = x[0, ..., 0]
+#         if ndims == 3:
+#             x = x[0]
+#         elif ndims == 2:
+#             x = x[0, ..., 0]
         return x
-
+    
     def mask_along_axis_iid(self, specs, mask_param, mask_value, axis, p):
         if axis not in [2, 3]:
             raise ValueError("Only Frequency and Time masking are supported")
@@ -394,15 +401,17 @@ class TimeFreqMask(tf.keras.layers.Layer):
         if not 0.0 <= p <= 1.0:
             raise ValueError(f"The value of p must be between 0.0 and 1.0 ({p} given).")
 
+        mask_param = mask_param # self._get_mask_param(mask_param, p, specs.shape[axis])
         if tf.random.uniform([]) > p:
             return specs
 
         specs = tf.transpose(specs, perm=[0, 3, 1, 2])  # (batch, channel, freq, time)
 
         dtype = specs.dtype
-
-        value = tf.random.uniform(shape=specs.shape[:2], dtype=dtype) * mask_param
-        min_value = tf.random.uniform(shape=specs.shape[:2], dtype=dtype) * (
+        shape = tf.shape(specs)
+        
+        value = tf.random.uniform(shape=shape[:2], dtype=dtype) * mask_param
+        min_value = tf.random.uniform(shape=shape[:2], dtype=dtype) * (
             specs.shape[axis] - value
         )
 
