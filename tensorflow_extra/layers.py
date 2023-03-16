@@ -282,9 +282,9 @@ class CutMix(tf.keras.layers.Layer):
 
         # Find the coordinates of the patch
         x1 = tf.cast(tf.clip_by_value(r_x - r_w_half, 0, W), tf.int32)
-        x2 = tf.cast(tf.clip_by_value(r_x + r_w_half, 0, W), tf.int32)
+        x2 = tf.cast(tf.clip_by_value(r_x + r_w_half, 1, W), tf.int32)
         y1 = tf.cast(tf.clip_by_value(r_y - r_h_half, 0, H), tf.int32)
-        y2 = tf.cast(tf.clip_by_value(r_y + r_h_half, 0, H), tf.int32)
+        y2 = tf.cast(tf.clip_by_value(r_y + r_h_half, 1, H), tf.int32)
 
         # Extract outer-pad patch -> [0, 0, 1, 1, 0, 0]
         patch1 = images[:, y1:y2, x1:x2, :]  # [batch, height, width, channel]
@@ -310,7 +310,23 @@ class CutMix(tf.keras.layers.Layer):
         images = tf.reshape(images, image_shape)
         labels = tf.reshape(labels, label_shape)
 
+        # Ensure original shape
+        images = self._ensure_original_shape(images, was_2d)
+
         return images, labels
+
+    def _ensure_4d(self, tensor):
+        if len(tensor.shape) == 2:
+            tensor = tf.expand_dims(tensor, axis=1)
+            tensor = tf.expand_dims(tensor, axis=-1)
+            return tensor, True
+        return tensor, False
+
+    def _ensure_original_shape(self, tensor, was_2d):
+        if was_2d:
+            tensor = tf.squeeze(tensor, axis=-1)
+            tensor = tf.squeeze(tensor, axis=1)
+        return tensor
 
     def get_config(self):
         config = super(CutMix, self).get_config()
