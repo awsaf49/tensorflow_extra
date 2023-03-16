@@ -476,3 +476,28 @@ class TimeFreqMask(tf.keras.layers.Layer):
             }
         )
         return config
+
+
+@tf.keras.utils.register_keras_serializable(package="tensorflow_extra")
+class ZScoreMinMax(tf.keras.layers.Layer):
+    def __init__(self, name="z_score_min_max", **kwargs):
+        super().__init__(name=name, **kwargs)
+
+    @tf.function
+    def call(self, inputs):
+        # Standardize using Z-score
+        mean = tf.math.reduce_mean(inputs)
+        std = tf.math.reduce_std(inputs)
+        standardized = tf.where(tf.math.equal(std, 0), inputs - mean, (inputs - mean) / std)
+
+        # Normalize using Min-Max
+        min_val = tf.math.reduce_min(standardized)
+        max_val = tf.math.reduce_max(standardized)
+        normalized = tf.where(tf.math.equal(max_val - min_val, 0), standardized - min_val,
+                              (standardized - min_val) / (max_val - min_val))
+
+        return normalized
+    
+    def get_config(self):
+        config = super().get_config()
+        return config
