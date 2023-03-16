@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_extra.utils import random_int, random_float
 
 
 @tf.keras.utils.register_keras_serializable(package="tensorflow_extra")
@@ -183,7 +182,7 @@ class MixUp(tf.keras.layers.Layer):
     def call(self, images, labels=None, training=False):
 
         # Skip batch if not training or if prob is not met or if labels are not provided
-        if random_float() > self.prob or not training or labels is None:
+        if tf.random.uniform([]) > self.prob or not training or labels is None:
             return (images, labels) if labels is not None else images
 
         # Get original shape
@@ -252,10 +251,12 @@ class CutMix(tf.keras.layers.Layer):
 
     @tf.function
     def call(self, images, labels=None, training=False):
-
         # Skip batch if not training or if prob is not met or if labels are not provided
-        if random_float() > self.prob or not training or labels is None:
+        if tf.random.uniform([]) > self.prob or not training or labels is None:
             return (images, labels) if labels is not None else images
+
+        # Ensure 4D input
+        images, was_2d = self._ensure_4d(images)
 
         # Get original shapes
         image_shape = tf.shape(images)
@@ -272,8 +273,16 @@ class CutMix(tf.keras.layers.Layer):
         # Find dimensions of patch
         H = tf.cast(image_shape[1], tf.int32)
         W = tf.cast(image_shape[2], tf.int32)
-        r_x = random_int([], minval=0, maxval=W) if not self.full_width else 0
-        r_y = random_int([], minval=0, maxval=H) if not self.full_height else 0
+        r_x = (
+            tf.random.uniform([], maxval=W, dtype=tf.int32)
+            if not self.full_width
+            else 0
+        )
+        r_y = (
+            tf.random.uniform([], maxval=H, dtype=tf.int32)
+            if not self.full_height
+            else 0
+        )
         r = 0.5 * tf.math.sqrt(1.0 - lam)
         r_w_p = r if not self.full_width else 1.0
         r_h_p = r if not self.full_height else 1.0
@@ -377,17 +386,17 @@ class TimeFreqMask(tf.keras.layers.Layer):
         # Adjust input shape
         ndims = tf.rank(x)
         shape = tf.shape(x)
-        
-#         if ndims == 3:
-#             x = x[tf.newaxis, ...]
-#             x = tf.reshape(x, shape=(1, tf.split(shape, 3)))
-#         elif ndims == 2:
-#             x = x[tf.newaxis, ..., tf.newaxis]
-#             x = tf.reshape(x, shape=(1, tf.split(shape, 2), 1))
-#         else:
-#             pass
-#         elif ndims > 4 or ndims < 2:
-#             raise ValueError("Input tensor must be 2, 3, or 4-dimensional.")
+
+        #         if ndims == 3:
+        #             x = x[tf.newaxis, ...]
+        #             x = tf.reshape(x, shape=(1, tf.split(shape, 3)))
+        #         elif ndims == 2:
+        #             x = x[tf.newaxis, ..., tf.newaxis]
+        #             x = tf.reshape(x, shape=(1, tf.split(shape, 2), 1))
+        #         else:
+        #             pass
+        #         elif ndims > 4 or ndims < 2:
+        #             raise ValueError("Input tensor must be 2, 3, or 4-dimensional.")
         # Apply time mask
         for _ in tf.range(self.num_time_masks):
             x = self.mask_along_axis_iid(
@@ -407,12 +416,12 @@ class TimeFreqMask(tf.keras.layers.Layer):
                 self.freq_mask_prob,
             )
         # Re-adjust output shape
-#         if ndims == 3:
-#             x = x[0]
-#         elif ndims == 2:
-#             x = x[0, ..., 0]
+        #         if ndims == 3:
+        #             x = x[0]
+        #         elif ndims == 2:
+        #             x = x[0, ..., 0]
         return x
-    
+
     def mask_along_axis_iid(self, specs, mask_param, mask_value, axis, p):
         if axis not in [2, 3]:
             raise ValueError("Only Frequency and Time masking are supported")
@@ -428,7 +437,7 @@ class TimeFreqMask(tf.keras.layers.Layer):
 
         dtype = specs.dtype
         shape = tf.shape(specs)
-        
+
         value = tf.random.uniform(shape=shape[:2], dtype=dtype) * mask_param
         min_value = tf.random.uniform(shape=shape[:2], dtype=dtype) * (
             specs.shape[axis] - value
