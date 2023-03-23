@@ -480,8 +480,11 @@ class TimeFreqMask(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package="tensorflow_extra")
 class ZScoreMinMax(tf.keras.layers.Layer):
+    """
+    Applies Z-score normalization and Min-Max normalization to the input tensor.
+    """
     def __init__(self, name="z_score_min_max", **kwargs):
-        super().__init__(name=name, **kwargs)
+        super(ZScoreMinMax, self).__init__(name=name, **kwargs)
 
     @tf.function
     def call(self, inputs):
@@ -499,5 +502,5 @@ class ZScoreMinMax(tf.keras.layers.Layer):
         return normalized
     
     def get_config(self):
-        config = super().get_config()
+        config = super(ZScoreMinMax, self).get_config()
         return config
