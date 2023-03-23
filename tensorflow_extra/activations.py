@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-
+@tf.keras.utils.register_keras_serializable(package="tensorflow_extra")
 def smelu(x, beta=1.5):
     """Smooth ReLU (SmeLU): Smooth activations and reproducibility in deep networks, https://arxiv.org/abs/2010.09931
 
