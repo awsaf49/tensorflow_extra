@@ -21,7 +21,7 @@ spec = audio2spec(audio)
 ```
 
 ## Time Frequency Masking
-Can also contril number of stripes.
+Can also control number of stripes.
 ```py
 time_freq_mask = tfe.layers.TimeFreqMask()
 spec = time_freq_mask(spec)
