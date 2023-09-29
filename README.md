@@ -4,12 +4,12 @@
 # Installation
 For Stable version
 ```shell
-pip install tensorflow-extra
+!pip install tensorflow-extra
 ```
 or
 For updated version
 ```shell
-pip install git+https://github.com/awsaf49/tensorflow_extra
+!pip install git+https://github.com/awsaf49/tensorflow_extra
 ```
 # Layers
 ## MelSpectrogram
