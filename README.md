@@ -1,5 +1,5 @@
 # Tensorflow Extra
-> Extra Utilities for Tensorflow
+> TensorFlow GPU & TPU compatible operations: MelSpectrogram, TimeFreqMask, CutMix, MixUp, ZScore, and more
 
 # Installation
 For Stable version
