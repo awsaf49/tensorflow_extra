@@ -11,6 +11,11 @@ For updated version
 ```shell
 !pip install git+https://github.com/awsaf49/tensorflow_extra
 ```
+
+# Usage
+To check use case of this library, checkout [BirdCLEF23: Pretraining is All you Need](https://www.kaggle.com/code/awsaf49/birdclef23-pretraining-is-all-you-need-train) notebook. It uses this library along with **Multi Stage Transfer Learning** for Bird Call Identification task.
+
+
 # Layers
 ## MelSpectrogram
 Converts audio data to mel-spectrogram in GPU/TPU.
