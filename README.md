@@ -20,21 +20,35 @@ audio2spec = tfe.layers.MelSpectrogram()
 spec = audio2spec(audio)
 ```
 
+<img src="https://github.com/awsaf49/tensorflow_extra/assets/36858976/45981a3f-fe32-423b-9a0d-5016b8463bbf" width="600">
+
+
 ## Time Frequency Masking
 Can also control number of stripes.
 ```py
 time_freq_mask = tfe.layers.TimeFreqMask()
 spec = time_freq_mask(spec)
 ```
+<img src="https://github.com/awsaf49/tensorflow_extra/assets/36858976/78bc7007-67e1-4a93-8f26-9d8a2e687edd" width="600">
 
-## CutMix & MixUp
+## CutMix
 Can be used with audio, spec, image. For spec full freq resolution can be used using `full_height=True`.
 ```py
 cutmix = tfe.layers.CutMix()
-mixup = tfe.layers.MixUp()
 audio = cutmix(audio, training=True) # accepts both audio & spectrogram
-audio = mixup(audio, training=True)
 ```
+<img src="https://github.com/awsaf49/tensorflow_extra/assets/36858976/35af3140-46ec-4592-8923-4bd21f76cb15" width="600">
+
+
+## MixUp
+Can be used with audio, spec, image. For spec full freq resolution can be used using `full_height=True`.
+```py
+mixup = tfe.layers.MixUp()
+audio = mixup(audio, training=True)  # accepts both audio & spectrogram
+```
+
+<img src="https://github.com/awsaf49/tensorflow_extra/assets/36858976/128de4aa-5295-4655-b00d-1e16b5e06560" width="600">
+
 
 ## Normalization
 Applies standardization and rescaling.
@@ -42,6 +56,8 @@ Applies standardization and rescaling.
 norm = tfe.layers.ZScoreMinMax()
 spec = norm(spec)
 ```
+<img src="https://github.com/awsaf49/tensorflow_extra/assets/36858976/8a8a4b38-9eb2-4dda-ab09-11887b37c593" width="600">
+
 
 # Activations
 ## SmeLU: Smooth ReLU
